@@ -1,0 +1,31 @@
+name: Debug Pages build
+on:
+  push:
+    branches: ["debug-build"]
+env:
+  SIMPLE_MODE: ${{ vars.SIMPLE_MODE }}
+  BASE_URL: ${{ vars.BASE_URL }}/
+  SITE_URL: ${{ vars.SITE_URL }}
+  HUSKY: 0
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      - name: Build like static.yml
+        run: |
+          export BASE_URL="$(echo "/${{ vars.BASE_URL }}/" | tr -s '/')"
+          echo "BASE_URL=[$BASE_URL] SIMPLE_MODE=[$SIMPLE_MODE] SITE_URL=[$SITE_URL]"
+          sed -i 's# && node scripts/seo-audit.mjs##' package.json
+          npm run build > build.log 2>&1 || { tail -50 build.log; exit 1; }
+      - name: Inspect output
+        run: |
+          echo "== index head refs =="; grep -o '<link[^>]*>\|<script[^>]*src="[^"]*"\|<base[^>]*>\|<meta http-equiv[^>]*>' dist/index.html | head -40
+          echo "== es/index refs =="; grep -o '<link[^>]*stylesheet[^>]*>\|<script[^>]*src="[^"]*"' dist/es/index.html | head
+          echo "== merge-pdf refs =="; grep -o '<link[^>]*stylesheet[^>]*>\|<script[^>]*src="[^"]*"' dist/merge-pdf.html | head
+          echo "== css assets =="; ls -la dist/assets | grep -E '\.css$'
+          echo "== index size =="; wc -c dist/index.html; head -c 1500 dist/index.html
