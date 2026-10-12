@@ -48,8 +48,11 @@ jobs:
         run: npm ci
       - name: Build distribution
         run: |
-          # Accept BASE_URL with or without slashes ("bentopdf", "/bentopdf", "/bentopdf/").
-          export BASE_URL="$(echo "/${{ vars.BASE_URL }}/" | tr -s '/')"
+          # Accept BASE_URL with or without slashes ("bentopdf", "/bentopdf", "/bentopdf/"),
+          # dropping empty and "." segments so a stray "/bentopdf/." still gives "/bentopdf/".
+          export BASE_URL="/$(echo "${{ vars.BASE_URL }}" | tr '/' '\n' | grep -v '^\.*$' | paste -sd/)/"
+          export BASE_URL="$(echo "$BASE_URL" | tr -s '/')"
+          echo "Using BASE_URL=$BASE_URL"
           # The SEO audit expects blog canonicals under the base path, but the blog
           # generator always writes www.bentopdf.com, so it fails on any subpath
           # deployment. It only checks SEO metadata, so skip it for this fork.
